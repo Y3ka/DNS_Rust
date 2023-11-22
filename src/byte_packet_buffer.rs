@@ -1,12 +1,16 @@
+//! This module implements all the necessary stuff for representing and interacting with the raw bytes of a DNS packet
+
 use std::str;
 use simple_error::SimpleError;
+
+/// Struct that represents a raw DNS packet
 pub struct BytePacketBuffer {
     pub buf: [u8; 512],
     pub pos: usize,
 }
 
 impl BytePacketBuffer {
-    // Create a new buffer that holds the package content received
+    /// Create a new buffer that holds the package content received
     pub fn new() -> BytePacketBuffer {
         BytePacketBuffer { 
             buf: [0; 512],
@@ -14,24 +18,24 @@ impl BytePacketBuffer {
         }
     }
 
-    // Return the current position within the buffer
+    /// Return the current position within the buffer
     pub fn pos(&self) -> usize {
         self.pos
     }
 
-    // Steps forward within the buffer
+    /// Steps forward within the buffer
     pub fn steps(&mut self, steps: usize) -> Result<(),SimpleError> {
         self.pos += steps;
         Ok(())
     }
 
-    // Change the buffer position
+    /// Change the buffer position
     pub fn seek(&mut self, pos: usize) -> Result<(),SimpleError> {
         self.pos = pos;
         Ok(())
     }
 
-    // Read one byte and make one step forward
+    /// Read one byte and make one step forward
     pub fn read(&mut self) -> Result<u8, SimpleError> {
         if self.pos >= 512 {
             bail!("End of buffer")
@@ -41,7 +45,7 @@ impl BytePacketBuffer {
         Ok(single_byte)
     }
 
-    // Get the byte at the current position
+    /// Get the byte at the current position
     pub fn get(&self, pos: usize) -> Result<u8, SimpleError> {
         if pos >= 512 {
             bail!("End of buffer")
@@ -49,7 +53,7 @@ impl BytePacketBuffer {
         Ok(self.buf[pos])
     }
 
-    // Get a range of byte starting at index start and of length len
+    /// Get a range of byte starting at index start and of length len
     pub fn get_range(&self, start: usize, len: usize) -> Result<&[u8], SimpleError> {
         if start + len >= 512 {
             bail!("End of buffer");
@@ -57,7 +61,7 @@ impl BytePacketBuffer {
         Ok(&self.buf[start..start + len])
     }
 
-    // Read two bytes and make two steps forward
+    /// Read two bytes and make two steps forward
     pub fn read_u16(&mut self) -> Result<u16, SimpleError> {
         if self.pos >= 511 {
             bail!("End of buffer");
@@ -66,7 +70,7 @@ impl BytePacketBuffer {
         Ok(two_bytes)
     }
 
-    // Read three bytes and make three steps forward
+    /// Read four bytes and make four steps forward
     pub fn read_u32(&mut self) -> Result<u32, SimpleError> {
         if self.pos >= 509 {
             bail!("End of buffer");
@@ -75,10 +79,11 @@ impl BytePacketBuffer {
         Ok(four_bytes)
     }
 
-    // Read qname
-    // In case the length bytes prependings name labels have its two MSB set to 1
-    // we need to jump to the position indicated by rest of the 6 bites
-    // i.e 0xC00C -> jump to position 12 (0x0C) and read from there
+    /// Read qname
+    /// In case the length bytes prependings name labels have its two MSB set to 1
+    /// we need to jump to the position indicated by rest of the 6 bits
+    /// # Example 
+    /// 0xC00C -> jump to position 12 (0x0C) and read from there
     pub fn read_qname(&mut self, outstr: &mut String) -> Result<(), SimpleError> {
         // Since we might encounter jumps, we'll keep track of our position
         // locally as opposed to using the position within the buffer. This
@@ -133,7 +138,7 @@ impl BytePacketBuffer {
                 outstr.push_str(delimiter);
 
                 let buf_slice = self.get_range(shared_pos, len as usize)?;
-                // Transform Vec<u8> to &str and add it to outstr
+                // Transform &[u8] to &str and add it to outstr
                 outstr.push_str(&str::from_utf8(buf_slice).expect("bytes are not valid UTF-8").to_lowercase());
                 delimiter = ".";
                 shared_pos += len as usize
@@ -149,7 +154,7 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    // Write the next byte of the buffer
+    /// Write the next byte of the buffer
     pub fn write(&mut self, val: u8) -> Result<(), SimpleError> {
         if self.pos >= 512 {
             bail!("End of buffer")
@@ -159,14 +164,14 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    // Write the next two bytes of the buffer
+    /// Write the next two bytes of the buffer
     pub fn write_u16(&mut self, val: u16) -> Result<(), SimpleError> {
         self.write((val >> 8) as u8)?;
         self.write((val & 0xFF) as u8)?;
         Ok(())
     }
 
-    // Write the next four bytes of the buffer
+    /// Write the next four bytes of the buffer
     pub fn write_u32(&mut self, val: u32) -> Result<(), SimpleError> {
         self.write((val >> 24) as u8)?;
         self.write(((val >> 16) & 0xFF) as u8)?;
@@ -175,7 +180,7 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    // Write the query name (domain)
+    /// Write the query name (domain)
     pub fn write_qname(&mut self, qname: &str) -> Result<(), SimpleError> {
         for label in qname.split(".") {
             let length = label.len();
@@ -192,14 +197,14 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    // Write 1 byte at position pos
+    /// Write 1 byte at position pos
     fn set(&mut self, pos: usize, val: u8) -> Result<(), SimpleError> {
         self.buf[pos] = val;
 
         Ok(())
     }
 
-    // Write 2 bytes at position pos and pos+1
+    /// Write 2 bytes at position pos and pos+1
     pub fn set_u16(&mut self, pos: usize, val: u16) -> Result<(), SimpleError> {
         self.set(pos, (val >> 8) as u8)?;
         self.set(pos + 1, (val & 0xFF) as u8)?;
