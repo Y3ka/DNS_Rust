@@ -1,5 +1,6 @@
-//Indicate the status of the response
+//! Represent the status of the response
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Enum to represent result codes
 pub enum ResultCode {
     NOERROR = 0,
     FORMERR = 1,
@@ -10,6 +11,7 @@ pub enum ResultCode {
 }
 
 impl ResultCode {
+    /// Convert 4 bits into the equivalent ResultCode
     pub fn from_num(num: u8) -> ResultCode {
         match num {
             1 => ResultCode::FORMERR,

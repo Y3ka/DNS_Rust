@@ -8,6 +8,7 @@ pub use byte_packet_buffer::*;
 pub use dns_packet::*;
 use std::net::{UdpSocket, Ipv4Addr};
 use simple_error::SimpleError;
+/// Entrypoint of the server, binding to a UDP socket
 fn main() -> Result<(), SimpleError> {
     // Bind an UDP socket on port 2053
     let socket = UdpSocket::bind("0.0.0.0:2053")
@@ -21,10 +22,8 @@ fn main() -> Result<(), SimpleError> {
     }
 }
 
-/*
-    stub resolver
-*/
-fn lookup(qname: &str, qtype: QueryType, server: (Ipv4Addr, u16)) -> Result<DnsPacket, SimpleError> {
+/// Forward the request to a caching DNS server.
+fn lookup(qname: &str, qtype: RecordType, server: (Ipv4Addr, u16)) -> Result<DnsPacket, SimpleError> {
     // Bind a UDP socket to an arbitrary port
     let socket = UdpSocket::bind(("0.0.0.0", 43210))
         .expect("Error creating socket on port 43210");
@@ -33,7 +32,7 @@ fn lookup(qname: &str, qtype: QueryType, server: (Ipv4Addr, u16)) -> Result<DnsP
     // `recursion_desired` flag. The packet id is arbitrary.
     let mut packet = DnsPacket::new();
 
-    packet.header.id = 6666;
+    packet.header.id = 1234;
     packet.header.questions = 1;
     packet.header.recursion_desired = true;
     packet
@@ -55,6 +54,7 @@ fn lookup(qname: &str, qtype: QueryType, server: (Ipv4Addr, u16)) -> Result<DnsP
     DnsPacket::from_buffer(&mut res_buffer)
 }
 
+/// Handle query received on the socket
 fn handle_query(socket: &UdpSocket) -> Result<(), SimpleError> {
     // Read a packet. Block until one is received
     let mut req_buffer = BytePacketBuffer::new();
@@ -103,15 +103,25 @@ fn handle_query(socket: &UdpSocket) -> Result<(), SimpleError> {
         res_packet.header.rescode = ResultCode::FORMERR;
     }
 
+    // Encode the response and send it off
     let mut res_buffer = BytePacketBuffer::new();
     res_packet.write(&mut res_buffer)?;
     socket.send_to(&res_buffer.buf[0..res_buffer.pos], src_addr)
         .expect("Error sending response packet to user");
     Ok(())
+    // let mut res_buffer = BytePacketBuffer::new();
+    // res_packet.write(&mut res_buffer)?;
+
+    // let len = res_buffer.pos();
+    // let data = res_buffer.get_range(0, len)?;
+
+    // socket.send_to(data, src_addr).expect("Error sending response packet to user");
+    // Ok(())
 }
 
-fn recursive_lookup(qname: &str, qtype: QueryType) -> Result<DnsPacket, SimpleError> {
-    // One of the Internet's 13 root servers *a.root-servers.net*.
+/// Perform a recursive lookup, starting from root name server 198.41.0.4
+fn recursive_lookup(qname: &str, qtype: RecordType) -> Result<DnsPacket, SimpleError> {
+    // One of the Internet's 13 root servers a.root-servers.net (https://www.internic.net/domain/named.root)
     let mut ns = "198.41.0.4".parse::<Ipv4Addr>().unwrap();
 
     // Since it might take an arbitrary number of steps, we enter an unbounded loop.
@@ -153,7 +163,7 @@ fn recursive_lookup(qname: &str, qtype: QueryType) -> Result<DnsPacket, SimpleEr
 
         // Here we go down the rabbit hole by starting _another_ lookup sequence our current one. 
         // Hopefully, this will give us the IP of an appropriate name server.
-        let recursive_response = recursive_lookup(&new_ns_name, QueryType::A)?;
+        let recursive_response = recursive_lookup(&new_ns_name, RecordType::A)?;
 
         // Finally, we pick a random ip from the result, and restart the loop. If no such
         // record is available, we again return the last result we got.

@@ -1,9 +1,11 @@
+//! Use to represent the dns packet header
 use crate::BytePacketBuffer;
 mod dns_res_code;
 pub use dns_res_code::*;
 use simple_error::SimpleError;
 
 #[derive(Clone, Debug)]
+/// Struct to represent a DNS header
 pub struct DnsHeader {
     pub id: u16, // 16 bits
 
@@ -48,7 +50,7 @@ impl DnsHeader {
             resource_entries: 0,
         }
     }
-
+    /// Read DNS header from a BytePacketBuffer and fill in the DNS header object
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),SimpleError> {
         self.id = buffer.read_u16()?;
         
@@ -73,7 +75,7 @@ impl DnsHeader {
 
         Ok(())
     }
-
+    /// Transform DNS header object into bytes and write it into a BytePacketBuffer
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), SimpleError> {
         buffer.write_u16(self.id)?;
         let first_flags: u8 = (self.response as u8) << 7

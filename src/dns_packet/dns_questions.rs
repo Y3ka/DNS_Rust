@@ -1,17 +1,19 @@
+//! Represent the DNS questions
 use crate::BytePacketBuffer;
-mod dns_query_type;
-pub use dns_query_type::*;
+mod dns_record_type;
+pub use dns_record_type::*;
 use simple_error::SimpleError;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Struct to represent a DNS question
 pub struct DnsQuestions {
     pub name: String,
-    pub qtype: QueryType,
+    pub qtype: RecordType,
     //pub class: bool -> in practice always one
 }
 
 impl DnsQuestions {
-    pub fn new(name: String, qtype: QueryType) -> DnsQuestions {
+    pub fn new(name: String, qtype: RecordType) -> DnsQuestions {
         DnsQuestions {
             name,
             qtype,
@@ -20,7 +22,7 @@ impl DnsQuestions {
 
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), SimpleError> {
         buffer.read_qname(&mut self.name)?;
-        self.qtype = QueryType::from_num(buffer.read_u16()?);
+        self.qtype = RecordType::from_num(buffer.read_u16()?);
         let _ = buffer.read_u16();
 
         Ok(())

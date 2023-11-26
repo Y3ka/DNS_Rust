@@ -1,3 +1,4 @@
+//! Represent a DNS packets
 mod dns_header;
 mod dns_questions;
 mod dns_record;
@@ -34,7 +35,7 @@ impl DnsPacket {
         result.header.read(buffer)?;
 
         for _ in 0..result.header.questions {
-            let mut question = DnsQuestions::new("".to_string(), QueryType::UNKNOWN(0));
+            let mut question = DnsQuestions::new("".to_string(), RecordType::UNKNOWN(0));
             question.read(buffer)?;
             result.questions.push(question);
         }
@@ -81,7 +82,7 @@ impl DnsPacket {
         Ok(())
     }
     
-    // Pick a random A record from the answer, in case there are multiple IPs
+    /// Pick a random A record from the answer, in case there are multiple IPs
     pub fn get_random_a(&self) -> Option<Ipv4Addr> {
         self.answers
             .iter()
@@ -132,7 +133,7 @@ impl DnsPacket {
             .next()
     }
 
-    /// In case there is no A records in the additional section, we'll have to perform *another*
+    /// In case there is no A records in the additional section, we'll have to perform another
     /// lookup in the midst. This method returns the host name of an appropriate name server.
     pub fn get_unresolved_ns<'a>(&'a self, qname: &'a str) -> Option<&'a str> {
         // Get an iterator over the nameservers in the authorities section

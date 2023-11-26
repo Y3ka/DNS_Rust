@@ -1,4 +1,4 @@
-//! This module implements all the necessary stuff for representing and interacting with the raw bytes of a DNS packet
+//! This module implements all the necessary tooling for representing and interacting with the raw bytes of a DNS packet
 
 use std::str;
 use simple_error::SimpleError;
@@ -180,7 +180,7 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Write the query name (domain)
+    /// Write the query name in labeled form (domain)
     pub fn write_qname(&mut self, qname: &str) -> Result<(), SimpleError> {
         for label in qname.split(".") {
             let length = label.len();
